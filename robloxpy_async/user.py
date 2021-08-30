@@ -4,7 +4,7 @@ from typing import List, Type, Union
 from async_property import async_property
 from asyncinit import asyncinit
 
-robloxpy = sys.modules['robloxpy']
+robloxpy = sys.modules['robloxpy_async']
 ClientId = None
 
 @asyncinit

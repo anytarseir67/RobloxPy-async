@@ -6,7 +6,7 @@ from typing import List, Union
 
 User = None
 PartialUser = None
-robloxpy = sys.modules['robloxpy']
+robloxpy = sys.modules['robloxpy_async']
 
 @asyncinit
 class Group():

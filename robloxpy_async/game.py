@@ -3,7 +3,7 @@ from asyncinit import asyncinit
 from async_property import async_property
 from . import Utils, asset, errors
 from typing import Type, Tuple
-robloxpy = sys.modules['robloxpy']
+robloxpy = sys.modules['robloxpy_async']
 
 user = None
 

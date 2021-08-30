@@ -1,7 +1,7 @@
 import aiohttp, os, sys
 from json.decoder import JSONDecodeError
 
-robloxpy = sys.modules['robloxpy']
+robloxpy = sys.modules['robloxpy_async']
 
 TestCookie = ""
 

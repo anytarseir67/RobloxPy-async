@@ -5,7 +5,7 @@ from typing import Union, Type, BinaryIO
 from os import PathLike
 from io import IOBase
 
-robloxpy = sys.modules['robloxpy']
+robloxpy = sys.modules['robloxpy_async']
 
 class ImageAsset():
     __slots__ = ('url')
