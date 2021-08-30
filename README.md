@@ -1,12 +1,11 @@
 
-# RobloxPy 1.0
-**RobloxPY 1.0 is in very early stages of development and should only be used for testing purposes.**
+# RobloxPy-async 1.0
 
-RobloxPy is a python API wrapper for roblox. This allows for quick and easy integration of these API's into a python project.
-<sup><center>If you need any help using RobloxPy or want to request an additional please join the discord server at 
-	https://discord.gg/dSDc3vTWr9
-Accept The Terms & Create a ticket</center></sup>
+RobloxPy-async is an async/await roblox API wrapper for python. This allows for quick and easy integration of these API's into a python project.
+If you need any help using RobloxPy or want to request any additional please join the discord server or guilded server bellow 
 
+https://discord.gg/fDQPCBybVJ
+https://www.guilded.gg/i/r2O1MB3p
 <!-- ## Table Of Contents
 
 * [Getting Started](#Getting-Started)
