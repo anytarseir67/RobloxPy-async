@@ -1,4 +1,3 @@
-import asyncio
 from . import group
 from . import user
 from . import Utils
@@ -35,7 +34,20 @@ async def SetCookie(Cookie: str) -> None:
         session.headers["Referer"] = "https://www.roblox.com/"
     except:
         raise errors.InvalidCookie()
-    if Utils.CheckCookie(Cookie) == False:
+    if await Utils.CheckCookie(Cookie) == False:
         raise errors.InvalidCookie()
     this.CurrentCookie = session
     this.RawCookie = Cookie
+
+async def close() -> None:
+    """
+    closes both instances of ClientSession.
+    """
+    try:
+        await this.CurrentCookie.close()
+    except:
+        pass
+    try:
+        await this.session.close()
+    except:
+        pass

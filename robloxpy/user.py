@@ -1,7 +1,6 @@
-import re
-import aiohttp, sys, webbrowser, time, random, asyncio
+import sys, webbrowser, time, random
 from . import Utils, errors, asset, group
-from typing import List, Tuple, Type, Union
+from typing import List, Type, Union
 from async_property import async_property
 from asyncinit import asyncinit
 
@@ -10,11 +9,8 @@ ClientId = None
 
 @asyncinit
 class BaseUser():
-    __slots__ = ('id', 'name', 'display_name', 'description', 'created_at', 'banned')
-
     async def __init__(self, id: Union[int, str], fetch: bool = True):
         await self._update(id, fetch)
-        #self._update(id, fetch)
 
     def __repr__(self) -> str:
         return self.name or str(self.id)
@@ -114,69 +110,77 @@ class BaseUser():
                 Done = True
         return TotalValue
 
-    @property
-    def status(self) -> str:
+    @async_property
+    async def status(self) -> str:
         """
         Returns the users status.
         """
-        response = requests.get(f"{Utils.UserAPIV1}{str(self.id)}/status")
-        return response.json()['status']
+        session = await robloxpy.get_session()
+        async with session.get(f"{Utils.UserAPIV1}{str(self.id)}/status") as resp:
+            data = await resp.json()
+        return data['status']
 
-    def _headshot(self, size: int = 720) -> str:
-        response = requests.get(f"{Utils.ThumnnailAPIV1}users/avatar-headshot?userIds={self.id}&size={size}x{size}&format=png")
-        return response.json()['data'][0]['imageUrl']
+    async def _headshot(self, size: int = 720) -> str:
+        session = await robloxpy.get_session()
+        async with session.get(f"{Utils.ThumnnailAPIV1}users/avatar-headshot?userIds={self.id}&size={size}x{size}&format=png") as resp:
+            data = await resp.json()
+        return data['data'][0]['imageUrl']
 
-    @property
-    def headshot(self) -> Type[asset.ImageAsset]:
+    @async_property
+    async def headshot(self) -> Type[asset.ImageAsset]:
         """
         Returns the users headshot as an ImageAsset.
         """
-        return asset.ImageAsset(self._headshot())
+        return asset.ImageAsset(await self._headshot())
 
-    def _bust(self, size: int = 420) -> str:
-        response = requests.get(f"{Utils.ThumnnailAPIV1}users/avatar-bust?userIds={self.id}&size={size}x{size}&format=png")
-        return response.json()['data'][0]['imageUrl']
+    async def _bust(self, size: int = 420) -> str:
+        session = await robloxpy.get_session()
+        async with session.get(f"{Utils.ThumnnailAPIV1}users/avatar-bust?userIds={self.id}&size={size}x{size}&format=png") as resp:
+            data = await resp.json()
+        return data['data'][0]['imageUrl']
 
-    @property
-    def bust(self) -> Type[asset.ImageAsset]:
+    @async_property
+    async def bust(self) -> Type[asset.ImageAsset]:
         """
         Returns the users bust as an ImageAsset.
         """
-        return asset.ImageAsset(self._bust())
+        return asset.ImageAsset(await self._bust())
 
-    def groups(self) -> Type[group.Group]:
+    async def groups(self) -> Type[group.Group]:
         """
         Returns the groups the user is in
         """
         groups = []
-        raw = requests.get(f"{Utils.GroupAPIV2}users/{self.id}/groups/roles")
-        data = raw.json()
+        session = await robloxpy.get_session()
+        async with session.get(f"{Utils.GroupAPIV2}users/{self.id}/groups/roles") as resp:
+            data = await resp.json()
         for _group in data['data']:
             groups.append(group.Group(_group['group']['id']))
         return groups
 
-    def limiteds(self) -> List[Type[asset.MarketAsset]]:
+    async def limiteds(self) -> List[Type[asset.MarketAsset]]:
         """
         Returns the users limited items 
         """
         Limiteds = []
         Cursor = ""
         Done = False
+        session = await robloxpy.get_session()
         while(Done == False):
             try:
-                response = requests.get(f"{Utils.InventoryURLV1}users/{self.id}/assets/collectibles?limit=100&sortOrder=Asc")
-                Items = response.json()
-                if response.json()['nextPageCursor'] == "null" or response.json()['nextPageCursor'] == None:
+                async with session.get(f"{Utils.InventoryURLV1}users/{self.id}/assets/collectibles?limit=100&sortOrder=Asc") as resp:
+                    Items = await resp.json()
+                if Items['nextPageCursor'] == "null" or Items['nextPageCursor'] == None:
                     Done = True
                 else:
                     Done = False
-                    Cursor = response.json()['nextPageCursor']
+                    Cursor = Items['nextPageCursor']
                 for Item in Items["data"]:
                     try:
                         Limiteds.append(asset.MarketAsset(Item['assetId']))
                     except:
                         continue
-                if response.json()['nextPageCursor'] == 'None':
+                if Items['nextPageCursor'] == 'None':
                     Done = True
                 
             except Exception as ex:
@@ -196,26 +200,25 @@ class PartialUser():
             return self.id == other.id
         return False
 
-    def fetch(self) -> 'User':
+    async def fetch(self) -> 'User':
         """
         Returns the User instance for the PartialUser
         """
-        return User(self.id)
+        return await User(self.id)
 
 class User(BaseUser):
-    def __init__(self, id: Union[int, str]):
-        super().__init__(id)
-            
-    @property
-    def following(self) -> bool:
+    @async_property
+    async def following(self) -> bool:
         """
         returns if the client user is following this user.
         redundant, might be removed
         """
-        response = robloxpy.CurrentCookie.post(f"{Utils.FriendsAPI}user/following-exists?UserID={str(self.id)}&followerUserID={self.id}", data={'targetUserIDs': str(self.id)})
-        return response.json()['followings'][0]['isFollowing']
+        session = robloxpy.CurrentCookie
+        async with session.post(f"{Utils.FriendsAPI}user/following-exists?UserID={str(self.id)}&followerUserID={self.id}", data={'targetUserIDs': str(self.id)}) as resp:
+            data = await resp.json()
+        return data['followings'][0]['isFollowing']
 
-    def send_message(self, Subject: str, Body: str) -> Union[str, dict]:
+    async def send_message(self, Subject: str, Body: str) -> Union[str, dict]:
         """
         Sends the given message to the given user
         """
@@ -223,74 +226,67 @@ class User(BaseUser):
             raise errors.NoCookie
 
         response = None
-        try:
-            response = robloxpy.CurrentCookie.post(Utils.PrivateMessageAPIV1 + 'messages/send', data={
-                                'userId': ClientId,
-                                'subject': Subject,
-                                'body': Body,
-                                'recipientId': self.id,
-                                })
-            return response.json()
-        except Exception as e:
-            return response.json()
+        async with robloxpy.CurrentCookie.post(Utils.PrivateMessageAPIV1 + 'messages/send', data={'userId': ClientId, 'subject': Subject, 'body': Body, 'recipientId': self.id}) as resp:
+            return await resp.json()
 
-    def follow(self) ->  Union[bool, str]:
+
+    async def follow(self) ->  Union[bool, str]:
         """
         Follows a user.
         captcha blocked, might be removed.
         """
         if robloxpy.CurrentCookie == None:
             raise errors.NoCookie
-        response = robloxpy.CurrentCookie.post(f"{Utils.FriendsAPI}users/{self.id}/follow", data={'targetUserID': self.id})
-        try:
-            return response.json()['success']
-        except:
-            return response.json()['errors']
+        async with robloxpy.CurrentCookie.post(f"{Utils.FriendsAPI}users/{self.id}/follow", data={'targetUserID': self.id}) as resp:
+            try:
+                return resp.json()['success']
+            except:
+                return resp.json()['errors']
 
-    def unfollow(self) ->  Union[bool, str]:
+    async def unfollow(self) ->  Union[bool, str]:
         """
         unfollows the user
         """
         if robloxpy.CurrentCookie == None:
             raise errors.NoCookie
-        response = robloxpy.CurrentCookie.post(f"{Utils.FriendsAPI}users/{self.id}/unfollow", data={'targetUserID': self.id})
-        try:
-            return response.json()['success']
-        except:
-            return response.json()['errors']
+        async with robloxpy.CurrentCookie.post(f"{Utils.FriendsAPI}users/{self.id}/unfollow", data={'targetUserID': self.id}) as resp:
+            try:
+                return resp.json()['success']
+            except:
+                return resp.json()['errors']
 
-    def block(self) -> Union[bool, str]:
+    async def block(self) -> Union[bool, str]:
         """
         Blocks the user
         """
         if robloxpy.CurrentCookie == None:
             raise errors.NoCookie
-        response = robloxpy.CurrentCookie.post(f"{Utils.APIURL}userblock/block?userId={self.id}", data={'targetUserID': self.id})
-        try:
-            return response.json()['success']
-        except:
-            return response.json()['errors']
+        async with robloxpy.CurrentCookie.post(f"{Utils.APIURL}userblock/block?userId={self.id}", data={'targetUserID': self.id}) as resp:
+            try:
+                return resp.json()['success']
+            except:
+                return resp.json()['errors']
 
-    def unblock(self) -> Union[bool, str]:
+    async def unblock(self) -> Union[bool, str]:
         """
         Unlocks the user
         """
         if robloxpy.CurrentCookie == None:
             raise errors.NoCookie
-        response = robloxpy.CurrentCookie.post(f"{Utils.APIURL}userblock/unblock?userId={self.id}", data={'targetUserID': self.id})
-        try:
-            return response.json()['success']
-        except:
-            return response.json()['errors']
+        async with robloxpy.CurrentCookie.post(f"{Utils.APIURL}userblock/unblock?userId={self.id}", data={'targetUserID': self.id}) as resp:
+            try:
+                return resp.json()['success']
+            except:
+                return resp.json()['errors']
 
 
 class ClientUser(BaseUser):
-    def __init__(self, id: Union[int, str]) -> None:
-        super().__init__(id)
+    async def __init__(self, id: Union[int, str]) -> None:
+        await super().__init__(id)
         global ClientId
         ClientId = self.id
 
-    def blocked_users(self) -> List[Type[User]]:
+    async def blocked_users(self) -> List[Type[User]]:
         """
         Returns users which are blocked
 
@@ -298,15 +294,14 @@ class ClientUser(BaseUser):
         """
         if robloxpy.CurrentCookie == None:
             raise errors.NoCookie
-        response = robloxpy.CurrentCookie.get(f"{Utils.SettingsURL}")
-        Data = response.json()['BlockedUsersModel']['BlockedUsers']
+        async with robloxpy.CurrentCookie.get(f"{Utils.SettingsURL}") as resp:
+            data = await resp.json()
         BlockedUsers = []
-
-        for _User in Data:
+        for _User in data['BlockedUsersModel']['BlockedUsers']:
             BlockedUsers.append(User(_User['uid']))
         return BlockedUsers
 
-    def following_user(self, targetUser: Union[Type[User], int]) -> bool:
+    async def following_user(self, targetUser: Union[Type[User], int]) -> bool:
         """
         Checks if the current account is following a user
         """
@@ -315,29 +310,19 @@ class ClientUser(BaseUser):
         if type(targetUser) == int:
             targetUser = User(targetUser)
 
-        data = robloxpy.CurrentCookie.post(f"{Utils.FriendsAPI}user/following-exists?UserID={str(targetUser.id)}&followerUserID={self.id}", data={'targetUserIDs': str(targetUser.id)}).json()['followings'][0]
-        return data['isFollowing']
+        async with robloxpy.CurrentCookie.post(f"{Utils.FriendsAPI}user/following-exists?UserID={str(targetUser.id)}&followerUserID={self.id}", data={'targetUserIDs': str(targetUser.id)}) as resp:
+            data = await resp.json()
+        return data['followings'][0]['isFollowing']
 
-    def join_game(self, PlaceId: int) -> None:
+    async def join_game(self, PlaceId: int) -> None:
         """
         Joins the given game
         """
         if robloxpy.CurrentCookie == None:
             raise errors.NoCookie
-        Gamesession = requests.session()
-        Gamesession.cookies[".ROBLOSECURITY"] = robloxpy.RawCookie
-
-        Gamesession = Gamesession.post(
-        url = Utils.GameAuthUrl,
-        headers = {
-            "Referer": "https://www.roblox.com/",
-            "X-CSRF-Token": Gamesession.post(
-                url = Utils.GameAuthUrl
-            ).headers["X-CSRF-Token"],
-        }
-        ).headers["RBX-Authentication-Ticket"]
-
+        async with robloxpy.CurrentCookie.post(url = Utils.GameAuthUrl) as resp:
+            ticket = resp.headers["rbx-authentication-ticket"]
         BrowserID = random.randint(10000000000, 99999999999)
-        webbrowser.open(f"roblox-player:1+launchmode:play+gameinfo:{Gamesession}+launchtime:{int(time.time()*1000)}+placelauncherurl:https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestGame%26browserTrackerId%3D{BrowserID}%26placeId%3D{PlaceId}%26isPlayTogetherGame%3Dfalse+browsertrackerid:{BrowserID}+robloxLocale:en_us+gameLocale:en_us")
+        webbrowser.open(f"roblox-player:1+launchmode:play+gameinfo:{ticket}+launchtime:{int(time.time()*1000)}+placelauncherurl:https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestGame%26browserTrackerId%3D{BrowserID}%26placeId%3D{PlaceId}%26isPlayTogetherGame%3Dfalse+browsertrackerid:{BrowserID}+robloxLocale:en_us+gameLocale:en_us")
 
 

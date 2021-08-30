@@ -1,4 +1,4 @@
-import requests, os, sys
+import aiohttp, os, sys
 from json.decoder import JSONDecodeError
 
 robloxpy = sys.modules['robloxpy']
@@ -25,7 +25,7 @@ DevelopAPIV2 = "https://develop.roblox.com/v2/"
 GameAuthUrl = "https://auth.roblox.com/v1/authentication-ticket/"
 ThumnnailAPIV1 = "https://thumbnails.roblox.com/v1/"
 
-def SetProxy(ProxyIP: str) -> None:
+async def SetProxy(ProxyIP: str) -> None:
     """
     Set the proxy to currently be used, this is global
     Format: IP:Port
@@ -36,30 +36,30 @@ def SetProxy(ProxyIP: str) -> None:
         os.environ['http_proxy'] = proxy
         os.environ['https_proxy'] = proxy
 
-def CheckProxy(proxyAddress: str = None) -> str:
+async def CheckProxy(proxyAddress: str = None) -> str:
     """
     Check the current IP address being given by the program
     """
-    SetProxy(proxyAddress)
-    response = requests.get('https://api.ipify.org/?format=json')
-    return response.json()['ip']
+    await SetProxy(proxyAddress)
+    session = await robloxpy.get_session()
+    async with session.get('https://api.ipify.org/?format=json') as resp:
+        data = await resp.json()
+    return data['ip']
 
-def CheckCookie(Cookie: str = None) -> bool:
+async def CheckCookie(Cookie: str = None) -> bool:
     """
     If you want to check the current used cookie just run the function without any arguments, if you wish to check a specific cookie then enter the cookie as a string
     """
     try:
-        if Cookie == None:
-            session = robloxpy.CurrentCookie
-        else:
-            session = requests.session()
-            CurrentCookie = {'.ROBLOSECURITY': Cookie}
-            requests.utils.add_dict_to_cookiejar(session.cookies, CurrentCookie)
-            Header = session.post('https://auth.roblox.com/')
-            session.headers['x-csrf-token'] = Header.headers['x-csrf-token']
-        response = session.get(MobileAPI + 'userinfo')
+        Cookie = Cookie or robloxpy.RawCookie
+        session = aiohttp.ClientSession(cookies={'.ROBLOSECURITY': Cookie})
+        async with session.post('https://auth.roblox.com/') as resp:
+            token = resp.headers['x-csrf-token']
+        async with session.get(MobileAPI + 'userinfo', headers={'x-csrf-token': token}) as resp:
+            data = await resp.json()
+        await session.close()
         try:
-            Temp = response.json()['UserID']
+            Temp = data['UserID']
             return True
         except (KeyError, JSONDecodeError):
             return False
