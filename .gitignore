@@ -3,5 +3,5 @@
 Test.py
 *.whl
 *.txt
+*.pyc
 !requirements.txt
-robloxpy_async/__pycache__/
