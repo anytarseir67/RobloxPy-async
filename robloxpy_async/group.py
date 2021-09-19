@@ -66,7 +66,7 @@ class Group():
     async def members(self, fetch: bool = False) -> Union[List['PartialUser'], List['User']]:
         """
         Returns a list of all members in the group. this method can be extraordinarily slow depending on group size.
-        by default the members are not fetched and do not contain any attributes, this can be changed be setting fetch to True, be aware this has a high chance of being rate limited
+        by default the members are not fetched and are returned as a list of user.PartialUser, this can be changed be setting fetch to True, be aware this has a high chance of being rate limited
         """
         Cursor = ""
         Done = False

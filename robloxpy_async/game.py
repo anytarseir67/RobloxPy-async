@@ -25,6 +25,7 @@ class Place():
     async def _update(self, id: int) -> None:
         if robloxpy.CurrentCookie == None:
             raise errors.NoCookie
+
         session = robloxpy.CurrentCookie
         async with session.get(f"{Utils.GamesAPI}games/multiget-place-details?placeIds={id}") as resp:
             data = await resp.json()
@@ -115,6 +116,7 @@ class Place():
         """
         if robloxpy.CurrentCookie == None:
             raise errors.NoCookie
+            
         async with robloxpy.CurrentCookie.post(url = Utils.GameAuthUrl) as resp:
             ticket = resp.headers["rbx-authentication-ticket"]
         BrowserID = random.randint(10000000000, 99999999999)

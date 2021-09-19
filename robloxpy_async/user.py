@@ -1,5 +1,5 @@
 import sys, webbrowser, time, random
-from . import Utils, errors, asset, group
+from . import Utils, errors, asset, group, game
 from typing import List, Type, Union
 from async_property import async_property
 from asyncinit import asyncinit
@@ -16,7 +16,7 @@ class BaseUser():
         return self.name or str(self.id)
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, (BaseUser, PartialUser, User, ClientUser)):
+        if isinstance(other, BaseUser):
             return self.id == other.id
         return False
 
@@ -146,7 +146,7 @@ class BaseUser():
         """
         return asset.ImageAsset(await self._bust())
 
-    async def groups(self) -> Type[group.Group]:
+    async def groups(self) -> List[Type[group.Group]]:
         """
         Returns the groups the user is in
         """
@@ -196,7 +196,7 @@ class PartialUser():
         return str(self.id)
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, (BaseUser, PartialUser, User, ClientUser)):
+        if isinstance(other, BaseUser):
             return self.id == other.id
         return False
 
@@ -220,12 +220,11 @@ class User(BaseUser):
 
     async def send_message(self, Subject: str, Body: str) -> Union[str, dict]:
         """
-        Sends the given message to the given user
+        Sends the given message to the user
         """
         if robloxpy.CurrentCookie == None:
             raise errors.NoCookie
 
-        response = None
         async with robloxpy.CurrentCookie.post(Utils.PrivateMessageAPIV1 + 'messages/send', data={'userId': ClientId, 'subject': Subject, 'body': Body, 'recipientId': self.id}) as resp:
             return await resp.json()
 
@@ -237,6 +236,7 @@ class User(BaseUser):
         """
         if robloxpy.CurrentCookie == None:
             raise errors.NoCookie
+
         async with robloxpy.CurrentCookie.post(f"{Utils.FriendsAPI}users/{self.id}/follow", data={'targetUserID': self.id}) as resp:
             try:
                 return resp.json()['success']
@@ -249,6 +249,7 @@ class User(BaseUser):
         """
         if robloxpy.CurrentCookie == None:
             raise errors.NoCookie
+
         async with robloxpy.CurrentCookie.post(f"{Utils.FriendsAPI}users/{self.id}/unfollow", data={'targetUserID': self.id}) as resp:
             try:
                 return resp.json()['success']
@@ -261,6 +262,7 @@ class User(BaseUser):
         """
         if robloxpy.CurrentCookie == None:
             raise errors.NoCookie
+
         async with robloxpy.CurrentCookie.post(f"{Utils.APIURL}userblock/block?userId={self.id}", data={'targetUserID': self.id}) as resp:
             try:
                 return resp.json()['success']
@@ -289,11 +291,10 @@ class ClientUser(BaseUser):
     async def blocked_users(self) -> List[Type[User]]:
         """
         Returns users which are blocked
-
-        [UserID],[UserName]
         """
         if robloxpy.CurrentCookie == None:
             raise errors.NoCookie
+
         async with robloxpy.CurrentCookie.get(f"{Utils.SettingsURL}") as resp:
             data = await resp.json()
         BlockedUsers = []
@@ -307,22 +308,27 @@ class ClientUser(BaseUser):
         """
         if robloxpy.CurrentCookie == None:
             raise errors.NoCookie
-        if type(targetUser) == int:
-            targetUser = User(targetUser)
 
-        async with robloxpy.CurrentCookie.post(f"{Utils.FriendsAPI}user/following-exists?UserID={str(targetUser.id)}&followerUserID={self.id}", data={'targetUserIDs': str(targetUser.id)}) as resp:
+        if isinstance(targetUser, BaseUser):
+            targetUser = targetUser.id
+
+        async with robloxpy.CurrentCookie.post(f"{Utils.FriendsAPI}user/following-exists?UserID={str(targetUser)}&followerUserID={self.id}", data={'targetUserIDs': str(targetUser)}) as resp:
             data = await resp.json()
         return data['followings'][0]['isFollowing']
 
-    async def join_game(self, PlaceId: int) -> None:
+    async def join_game(self, place: Union[int, Type[game.Place]]) -> None:
         """
         Joins the given game
         """
         if robloxpy.CurrentCookie == None:
             raise errors.NoCookie
+
+        if isinstance(place, game.Place):
+            place = place.id
+
         async with robloxpy.CurrentCookie.post(url = Utils.GameAuthUrl) as resp:
             ticket = resp.headers["rbx-authentication-ticket"]
         BrowserID = random.randint(10000000000, 99999999999)
-        webbrowser.open(f"roblox-player:1+launchmode:play+gameinfo:{ticket}+launchtime:{int(time.time()*1000)}+placelauncherurl:https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestGame%26browserTrackerId%3D{BrowserID}%26placeId%3D{PlaceId}%26isPlayTogetherGame%3Dfalse+browsertrackerid:{BrowserID}+robloxLocale:en_us+gameLocale:en_us")
+        webbrowser.open(f"roblox-player:1+launchmode:play+gameinfo:{ticket}+launchtime:{int(time.time()*1000)}+placelauncherurl:https%3A%2F%2Fassetgame.roblox.com%2Fgame%2FPlaceLauncher.ashx%3Frequest%3DRequestGame%26browserTrackerId%3D{BrowserID}%26placeId%3D{place}%26isPlayTogetherGame%3Dfalse+browsertrackerid:{BrowserID}+robloxLocale:en_us+gameLocale:en_us")
 
 

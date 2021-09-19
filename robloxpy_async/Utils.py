@@ -30,7 +30,6 @@ async def SetProxy(ProxyIP: str) -> None:
     Set the proxy to currently be used, this is global
     Format: IP:Port
     """
-    #Format 144.217.101.245:3129
     if(ProxyIP != None):
         proxy = 'http://' + str(ProxyIP)
         os.environ['http_proxy'] = proxy
